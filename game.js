@@ -287,7 +287,8 @@ function spawnNewArmy(W) {
     kills: 0,
     name,
     color: makeColor(id),
-    flankBias
+    flankBias,
+    human: true
   };
   if (reuse) Object.assign(reuse, fresh);
   else W.armies.push(fresh);
