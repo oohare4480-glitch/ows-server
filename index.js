@@ -12,8 +12,8 @@ const {
   filterProfanity, pushChat, randLine,
 } = require("./game.js");
 
-const TICK_MS = 120;        // server simulation tick
-const BROADCAST_MS = 150;   // how often full state is sent to every client
+const TICK_MS = 60;         // server simulation tick
+const BROADCAST_MS = 80;    // how often full state is sent to every client
 const PLAYER_STALE_MS = 20000; // no ping this long -> treat as gone
 
 const W = {
