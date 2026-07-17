@@ -170,9 +170,9 @@ wss.on("connection", (ws) => {
       let room;
       if (msg.type === "create") {
         // 「新しい部屋を作る」— 既存の部屋の空きは見ず、必ず新規の部屋を作る。
-        // 合言葉(code)を指定すればそれを使う。空なら自動生成。
-        // 友達に合言葉を教えて集まりたい時に使う。
+        // 合言葉(code)の指定は必須(友達と集まる専用の部屋なので、空欄では作らせない)。
         if (rooms.size >= MAX_ROOMS) { ws.send(JSON.stringify({ type: "error", reason: "server_full" })); return; }
+        if (!String(msg.code || "").trim()) { ws.send(JSON.stringify({ type: "error", reason: "code_required" })); return; }
         const result = createRoom(msg.code);
         if (result.error) { ws.send(JSON.stringify({ type: "error", reason: result.error })); return; }
         room = result.room;
