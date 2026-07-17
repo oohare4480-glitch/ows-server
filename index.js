@@ -55,8 +55,16 @@ function makeRoomCode() {
   return code;
 }
 
-function createRoom() {
-  const code = makeRoomCode();
+function createRoom(preferredCode) {
+  let code = null;
+  if (preferredCode) {
+    const c = String(preferredCode).trim().toUpperCase();
+    if (!/^[A-Z2-9]{3,10}$/.test(c)) return { error: "invalid_code" };
+    if (rooms.has(c)) return { error: "code_taken" };
+    code = c;
+  } else {
+    code = makeRoomCode();
+  }
   const room = {
     code,
     world: { mode: "openworld", cells: new Map(), armies: [], marchAnchor: now(), lastMarchTick: 0, chat: [] },
@@ -65,7 +73,7 @@ function createRoom() {
     emptySince: now(),
   };
   rooms.set(code, room);
-  return room;
+  return { room };
 }
 
 // find a room with free space for quick-match, or create a new one if every
@@ -76,7 +84,7 @@ function findRoomForQuickMatch() {
     if (aliveCount(room.world) < ROOM_CAP) return room;
   }
   if (rooms.size >= MAX_ROOMS) return null; // server is at capacity across all rooms
-  return createRoom();
+  return createRoom().room || null;
 }
 
 function roomSummary(room) {
@@ -132,7 +140,7 @@ function broadcastSoon(room) {
 const server = http.createServer((req, res) => {
   if (req.method === "GET" && req.url === "/api/rooms") {
     res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
-    res.end(JSON.stringify({ rooms: [...rooms.values()].map(roomSummary), roomCap: ROOM_CAP, maxRooms: MAX_ROOMS }));
+    res.end(JSON.stringify({ rooms: [...rooms.values()].filter((r) => r.clients.size > 0).map(roomSummary), roomCap: ROOM_CAP, maxRooms: MAX_ROOMS }));
     return;
   }
   res.writeHead(200, { "Content-Type": "text/plain" });
@@ -153,7 +161,7 @@ wss.on("connection", (ws) => {
     if (msg.type === "ping") return;
 
     if (msg.type === "rooms") {
-      ws.send(JSON.stringify({ type: "rooms", rooms: [...rooms.values()].map(roomSummary) }));
+      ws.send(JSON.stringify({ type: "rooms", rooms: [...rooms.values()].filter((r) => r.clients.size > 0).map(roomSummary) }));
       return;
     }
 
@@ -162,9 +170,12 @@ wss.on("connection", (ws) => {
       let room;
       if (msg.type === "create") {
         // 「新しい部屋を作る」— 既存の部屋の空きは見ず、必ず新規の部屋を作る。
+        // 合言葉(code)を指定すればそれを使う。空なら自動生成。
         // 友達に合言葉を教えて集まりたい時に使う。
         if (rooms.size >= MAX_ROOMS) { ws.send(JSON.stringify({ type: "error", reason: "server_full" })); return; }
-        room = createRoom();
+        const result = createRoom(msg.code);
+        if (result.error) { ws.send(JSON.stringify({ type: "error", reason: result.error })); return; }
+        room = result.room;
       } else {
         const requestedCode = String(msg.code || "").trim().toUpperCase();
         if (requestedCode) {
