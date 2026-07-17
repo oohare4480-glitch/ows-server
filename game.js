@@ -577,6 +577,23 @@ function handleDefeat(W, army) {
   if (!army || !army.alive) return;
   army.alive = false;
 }
+// 相対方向(前/後/左/右/斜め)を、そのarmy自身の現在のfacingを基準に絶対ベクトルへ変換する。
+// クライアントの facing が一瞬でもサーバーとずれていても、進軍方向は必ずサーバー側の
+// 正しい facing を基準に計算されるので食い違わない。
+function relVector(facing, rel) {
+  const front = F[facing], right = F[(facing + 1) % 4], back = F[(facing + 2) % 4], left = F[(facing + 3) % 4];
+  switch (rel) {
+    case "front": return front;
+    case "back": return back;
+    case "left": return left;
+    case "right": return right;
+    case "frontLeft": return [front[0] + left[0], front[1] + left[1]];
+    case "frontRight": return [front[0] + right[0], front[1] + right[1]];
+    case "backLeft": return [back[0] + left[0], back[1] + left[1]];
+    case "backRight": return [back[0] + right[0], back[1] + right[1]];
+    default: return [0, 0];
+  }
+}
 function applyGuestAction(W, army, action) {
   if (!army || !army.alive) return;
   const t = now();
@@ -600,6 +617,13 @@ function applyGuestAction(W, army, action) {
     army.lastAction = t;
   } else if (action.type === "target") {
     army.target = [action.tx, action.ty];
+  } else if (action.type === "targetRel") {
+    const [vx, vy] = relVector(army.facing, action.rel);
+    const cx = army.center[0], cy = army.center[1];
+    let tx = cx, ty = cy;
+    if (vx < 0) tx = 0; else if (vx > 0) tx = MAP_W - 1;
+    if (vy < 0) ty = 0; else if (vy > 0) ty = MAP_H - 1;
+    army.target = [tx, ty];
   } else if (action.type === "stopTarget") {
     army.target = null;
   } else if (action.type === "chat") {
