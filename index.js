@@ -57,6 +57,7 @@ function makeRoomCode() {
 
 function createRoom(preferredCode) {
   let code = null;
+  const isPrivate = !!preferredCode;
   if (preferredCode) {
     const c = String(preferredCode).trim().toUpperCase();
     if (!/^[A-Z2-9]{3,10}$/.test(c)) return { error: "invalid_code" };
@@ -67,6 +68,7 @@ function createRoom(preferredCode) {
   }
   const room = {
     code,
+    private: isPrivate, // 自分で合言葉を決めて作った部屋は一覧に出さない
     world: { mode: "openworld", cells: new Map(), armies: [], marchAnchor: now(), lastMarchTick: 0, chat: [] },
     clients: new Map(),
     lastBroadcastAt: 0,
@@ -81,7 +83,7 @@ function createRoom(preferredCode) {
 // MAX_ROOMS so a burst of traffic can't spin up unbounded rooms/memory.
 function findRoomForQuickMatch() {
   for (const room of rooms.values()) {
-    if (aliveCount(room.world) < ROOM_CAP) return room;
+    if (!room.private && aliveCount(room.world) < ROOM_CAP) return room;
   }
   if (rooms.size >= MAX_ROOMS) return null; // server is at capacity across all rooms
   return createRoom().room || null;
@@ -140,7 +142,7 @@ function broadcastSoon(room) {
 const server = http.createServer((req, res) => {
   if (req.method === "GET" && req.url === "/api/rooms") {
     res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
-    res.end(JSON.stringify({ rooms: [...rooms.values()].filter((r) => r.clients.size > 0).map(roomSummary), roomCap: ROOM_CAP, maxRooms: MAX_ROOMS }));
+    res.end(JSON.stringify({ rooms: [...rooms.values()].filter((r) => r.clients.size > 0 && !r.private).map(roomSummary), roomCap: ROOM_CAP, maxRooms: MAX_ROOMS }));
     return;
   }
   res.writeHead(200, { "Content-Type": "text/plain" });
@@ -161,7 +163,7 @@ wss.on("connection", (ws) => {
     if (msg.type === "ping") return;
 
     if (msg.type === "rooms") {
-      ws.send(JSON.stringify({ type: "rooms", rooms: [...rooms.values()].filter((r) => r.clients.size > 0).map(roomSummary) }));
+      ws.send(JSON.stringify({ type: "rooms", rooms: [...rooms.values()].filter((r) => r.clients.size > 0 && !r.private).map(roomSummary) }));
       return;
     }
 
