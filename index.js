@@ -157,17 +157,24 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    if (msg.type === "join") {
+    if (msg.type === "join" || msg.type === "create") {
       if (info.room) return; // already in a room on this connection
-      const requestedCode = String(msg.code || "").trim().toUpperCase();
       let room;
-      if (requestedCode) {
-        room = rooms.get(requestedCode);
-        if (!room) { ws.send(JSON.stringify({ type: "error", reason: "not_found" })); return; }
-        if (aliveCount(room.world) >= ROOM_CAP) { ws.send(JSON.stringify({ type: "full" })); return; }
+      if (msg.type === "create") {
+        // 「新しい部屋を作る」— 既存の部屋の空きは見ず、必ず新規の部屋を作る。
+        // 友達に合言葉を教えて集まりたい時に使う。
+        if (rooms.size >= MAX_ROOMS) { ws.send(JSON.stringify({ type: "error", reason: "server_full" })); return; }
+        room = createRoom();
       } else {
-        room = findRoomForQuickMatch();
-        if (!room) { ws.send(JSON.stringify({ type: "error", reason: "server_full" })); return; }
+        const requestedCode = String(msg.code || "").trim().toUpperCase();
+        if (requestedCode) {
+          room = rooms.get(requestedCode);
+          if (!room) { ws.send(JSON.stringify({ type: "error", reason: "not_found" })); return; }
+          if (aliveCount(room.world) >= ROOM_CAP) { ws.send(JSON.stringify({ type: "full" })); return; }
+        } else {
+          room = findRoomForQuickMatch();
+          if (!room) { ws.send(JSON.stringify({ type: "error", reason: "server_full" })); return; }
+        }
       }
       const nm = filterProfanity(String(msg.name || "").trim()).slice(0, NAME_MAX_LEN) || "名無し";
       const a = spawnNewArmy(room.world);
