@@ -425,7 +425,6 @@ function resolveSimultaneousMarch(W, movers) {
         if (loser.p.t === "K") {
           ev.kingsKilled.push(loser.m.army.id);
           survivor.m.army.kills = (survivor.m.army.kills || 0) + 1;
-          pushChat(W, survivor.m.army.name, survivor.m.army.color.chip, randLine("kill", survivor.m.army.name, loser.m.army.name));
         }
       }
     }
@@ -437,7 +436,6 @@ function resolveSimultaneousMarch(W, movers) {
         ev.kingsKilled.push(occ.owner);
         survivor.m.army.kills = (survivor.m.army.kills || 0) + 1;
         const victimArmy = W.armies[occ.owner];
-        pushChat(W, survivor.m.army.name, survivor.m.army.color.chip, randLine("kill", survivor.m.army.name, victimArmy ? victimArmy.name : ""));
       }
     }
     W.cells.set(dk, survivor.p);
@@ -578,7 +576,6 @@ function aliveCount(W) {
 function handleDefeat(W, army) {
   if (!army || !army.alive) return;
   army.alive = false;
-  pushChat(W, army.name, army.color.chip, randLine("defeat", army.name));
 }
 function applyGuestAction(W, army, action) {
   if (!army || !army.alive) return;
@@ -591,7 +588,6 @@ function applyGuestAction(W, army, action) {
     if (v && v.t === "K") {
       army.kills = (army.kills || 0) + 1;
       const dead = W.armies.find((x) => x.id === v.owner);
-      pushChat(W, army.name, army.color.chip, randLine("kill", army.name, dead ? dead.name : ""));
       handleDefeat(W, dead);
     }
   } else if (action.type === "drop") {

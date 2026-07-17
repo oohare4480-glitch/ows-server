@@ -1,7 +1,8 @@
 // Open World Shogi — authoritative WebSocket server.
 // One shared persistent world, up to CAP players, no AI. The server is the
 // single source of truth: it applies every player's actions, runs the march
-// tick, and broadcasts the world state to everyone at a fixed interval.
+// tick, and broadcasts the world state to everyone at a fixed interval (plus
+// an immediate broadcast right after any action, for lower perceived latency).
 // Free-tier friendly: plain Node.js + the `ws` package, no database needed.
 
 const http = require("http");
@@ -13,7 +14,8 @@ const {
 } = require("./game.js");
 
 const TICK_MS = 60;         // server simulation tick
-const BROADCAST_MS = 80;    // how often full state is sent to every client
+const BROADCAST_MS = 80;    // fallback full-state broadcast interval
+const BROADCAST_MIN_GAP_MS = 30; // throttle for the immediate post-action broadcast
 const PLAYER_STALE_MS = 20000; // no ping this long -> treat as gone
 
 const W = {
@@ -22,6 +24,7 @@ const W = {
 };
 
 const clients = new Map(); // ws -> { armyId, name, lastSeen }
+let lastBroadcastAt = 0;
 
 function leaveArmy(armyId) {
   const army = W.armies.find(a => a.id === armyId);
@@ -47,6 +50,24 @@ function serialize() {
     cap: CAP, count: aliveCount(W),
     ts: now(),
   });
+}
+
+function broadcast() {
+  if (!wss.clients.size) return;
+  const payload = serialize();
+  for (const ws of wss.clients) {
+    if (ws.readyState === WebSocket.OPEN) ws.send(payload);
+  }
+  lastBroadcastAt = now();
+}
+
+// call this right after any action that changes the world, so the change
+// reaches everyone almost immediately instead of waiting for the next
+// scheduled tick (still throttled a little so a burst of actions can't
+// flood the network).
+function broadcastSoon() {
+  const t = now();
+  if (t - lastBroadcastAt >= BROADCAST_MIN_GAP_MS) broadcast();
 }
 
 const server = http.createServer((req, res) => {
@@ -75,8 +96,8 @@ wss.on("connection", (ws) => {
       a.name = nm;
       info.armyId = a.id;
       info.name = nm;
-      pushChat(W, a.name, a.color.chip, randLine("join", a.name));
       ws.send(JSON.stringify({ type: "joined", armyId: a.id }));
+      broadcastSoon();
       return;
     }
 
@@ -91,26 +112,32 @@ wss.on("connection", (ws) => {
       if (!a) return;
       a.name = info.name;
       info.armyId = a.id;
-      pushChat(W, a.name, a.color.chip, randLine("join", a.name));
       ws.send(JSON.stringify({ type: "joined", armyId: a.id }));
+      broadcastSoon();
       return;
     }
 
     if (["move", "drop", "rotate", "target", "stopTarget", "chat"].includes(msg.type)) {
       applyGuestAction(W, army, msg);
+      broadcastSoon();
     }
   });
 
   ws.on("close", () => {
     const c = clients.get(ws);
-    if (c && c.armyId != null) leaveArmy(c.armyId);
+    if (c && c.armyId != null) { leaveArmy(c.armyId); broadcastSoon(); }
     clients.delete(ws);
   });
 });
 
 // simulation loop
 setInterval(() => {
-  try { updateWorld(W); } catch (e) { console.error("updateWorld error", e); }
+  try {
+    const before = W.lastMarchTick;
+    updateWorld(W);
+    // a march tick just resolved (pieces moved/collided) -> tell everyone now
+    if (W.lastMarchTick !== before) broadcastSoon();
+  } catch (e) { console.error("updateWorld error", e); }
   // stale-connection cleanup (covers dropped connections that never fired 'close')
   const t = Date.now();
   for (const [ws, c] of clients) {
@@ -123,14 +150,9 @@ setInterval(() => {
   }
 }, TICK_MS);
 
-// broadcast loop
-setInterval(() => {
-  if (!wss.clients.size) return;
-  const payload = serialize();
-  for (const ws of wss.clients) {
-    if (ws.readyState === WebSocket.OPEN) ws.send(payload);
-  }
-}, BROADCAST_MS);
+// fallback broadcast loop (covers any state change broadcastSoon() might have
+// throttled away, and keeps clients in sync even with zero player activity)
+setInterval(broadcast, BROADCAST_MS);
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => console.log(`Open World Shogi server listening on :${PORT}`));
