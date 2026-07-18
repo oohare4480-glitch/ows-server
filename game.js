@@ -571,6 +571,7 @@ function applyAction(W, army, a) {
     return null;
   }
   const mover = W.cells.get(K(a.fx, a.fy));
+  if (!mover || mover.owner !== army.id) return null; // 盤面が変わっていて、もうその駒が存在しない(取られた等)場合は何もしない
   const victim = W.cells.get(K(a.tx, a.ty));
   W.cells.delete(K(a.fx, a.fy));
   if (victim) {
