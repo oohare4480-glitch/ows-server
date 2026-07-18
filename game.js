@@ -440,7 +440,7 @@ function resolveSimultaneousMarch(W, movers) {
     }
     const occ = W.cells.get(dk);
     if (occ && occ.owner !== survivor.m.army.id) {
-      survivor.m.army.hand[occ.t] = (survivor.m.army.hand[occ.t] || 0) + 1;
+      if (occ.t !== "K") survivor.m.army.hand[occ.t] = (survivor.m.army.hand[occ.t] || 0) + 1;
       ev.trampledTotal++;
       if (occ.t === "K") {
         ev.kingsKilled.push(occ.owner);
@@ -574,7 +574,7 @@ function applyAction(W, army, a) {
   if (!mover || mover.owner !== army.id) return null; // 盤面が変わっていて、もうその駒が存在しない(取られた等)場合は何もしない
   const victim = W.cells.get(K(a.tx, a.ty));
   W.cells.delete(K(a.fx, a.fy));
-  if (victim) {
+  if (victim && victim.t !== "K") {
     army.hand[victim.t] = (army.hand[victim.t] || 0) + 1;
   }
   if (a.promote) mover.promoted = true;
