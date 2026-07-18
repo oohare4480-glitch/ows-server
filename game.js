@@ -644,8 +644,6 @@ function applyGuestAction(W, army, action) {
   } else if (action.type === "stopTarget") {
     army.marchRel = null;
     army.target = null;
-  } else if (action.type === "chat") {
-    pushChat(W, army.name, army.color.chip, action.text);
   }
 }
 function updateWorld(W) {

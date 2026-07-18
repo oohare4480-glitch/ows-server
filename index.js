@@ -220,7 +220,7 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    if (["move", "drop", "rotate", "target", "targetRel", "stopTarget", "chat"].includes(msg.type)) {
+    if (["move", "drop", "rotate", "target", "targetRel", "stopTarget"].includes(msg.type)) {
       applyGuestAction(room.world, army, msg);
       broadcastSoon(room);
     }
