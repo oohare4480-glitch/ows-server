@@ -369,10 +369,8 @@ function marchDirFor(W, a, kings, myPieces) {
     if (vx < 0) tx = 0; else if (vx > 0) tx = MAP_W - 1;
     if (vy < 0) ty = 0; else if (vy > 0) ty = MAP_H - 1;
     dest = [tx, ty];
-    army.target = dest;
     if (dest[0] === a.center[0] && dest[1] === a.center[1]) {
       a.marchRel = null;
-      a.target = null;
       return null;
     }
   } else {
