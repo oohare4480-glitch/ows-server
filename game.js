@@ -280,6 +280,7 @@ function spawnNewArmy(W) {
     alive: true,
     hand: {},
     target: null,
+    marchRel: null,
     lastMove: t,
     lastAction: t,
     center,
@@ -359,8 +360,18 @@ function marchInBounds(pieces, dx, dy) {
 function marchDirFor(W, a, kings, myPieces) {
   let dest = null;
   if (a.id === W.playerId || a.human) {
-    dest = a.target;
-    if (dest && dest[0] === a.center[0] && dest[1] === a.center[1]) {
+    // 相対方向(marchRel)を、そのarmy自身の"現在の"facingから毎tick再計算する。
+    // 絶対座標を1回だけ計算して覚えておく方式だと、進軍中に回転しても
+    // 古い方向のまま進んでしまうため、必ずここで現在のfacingを使う。
+    if (!a.marchRel) return null;
+    const [vx, vy] = relVector(a.facing, a.marchRel);
+    let tx = a.center[0], ty = a.center[1];
+    if (vx < 0) tx = 0; else if (vx > 0) tx = MAP_W - 1;
+    if (vy < 0) ty = 0; else if (vy > 0) ty = MAP_H - 1;
+    dest = [tx, ty];
+    army.target = dest;
+    if (dest[0] === a.center[0] && dest[1] === a.center[1]) {
+      a.marchRel = null;
       a.target = null;
       return null;
     }
@@ -616,16 +627,23 @@ function applyGuestAction(W, army, action) {
     army.facing = (army.facing + (action.dir > 0 ? 1 : 3)) % 4;
     army.lastMove = t;
     army.lastAction = t;
+    // 進軍中に回転したら、次の進軍tickを待たずに目標地点を新しい正面基準で
+    // 即座に更新する(表示・実際の移動方向がすぐに反映されるように)。
+    if (army.marchRel) {
+      const [vx, vy] = relVector(army.facing, army.marchRel);
+      let tx = army.center[0], ty = army.center[1];
+      if (vx < 0) tx = 0; else if (vx > 0) tx = MAP_W - 1;
+      if (vy < 0) ty = 0; else if (vy > 0) ty = MAP_H - 1;
+      army.target = [tx, ty];
+    }
   } else if (action.type === "target") {
     army.target = [action.tx, action.ty];
   } else if (action.type === "targetRel") {
-    const [vx, vy] = relVector(army.facing, action.rel);
-    const cx = army.center[0], cy = army.center[1];
-    let tx = cx, ty = cy;
-    if (vx < 0) tx = 0; else if (vx > 0) tx = MAP_W - 1;
-    if (vy < 0) ty = 0; else if (vy > 0) ty = MAP_H - 1;
-    army.target = [tx, ty];
+    // 絶対座標はここで計算せず、相対方向の意図だけ保存する。
+    // 実際の目的地はmarchDirForが毎tick、その時点のfacingから計算し直す。
+    army.marchRel = action.rel;
   } else if (action.type === "stopTarget") {
+    army.marchRel = null;
     army.target = null;
   } else if (action.type === "chat") {
     pushChat(W, army.name, army.color.chip, action.text);

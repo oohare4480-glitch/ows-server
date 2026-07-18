@@ -111,7 +111,7 @@ function serialize(room) {
     cells: [...W.cells].map(([k, p]) => [k, p.t, p.promoted ? 1 : 0, p.owner]),
     armies: W.armies.map(a => ({
       id: a.id, facing: a.facing, alive: a.alive, hand: a.hand, center: a.center,
-      kills: a.kills, target: a.target, flankBias: a.flankBias, name: a.name,
+      kills: a.kills, target: a.target, marchRel: a.marchRel || null, flankBias: a.flankBias, name: a.name,
       cd: Math.max(0, 5000 - (now() - a.lastAction)),
     })),
     chat: W.chat.slice(-40),
