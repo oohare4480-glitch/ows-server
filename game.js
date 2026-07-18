@@ -70,23 +70,6 @@ function generateOneName(existingNames) {
   } while (existingNames.has(name));
   return name;
 }
-const CHAT_LINES = {
-  join: ["{A} has entered the battlefield!", "{A} rejoint la bataille !", "\xA1{A} se une a la batalla!", "{A} betritt das Schlachtfeld!", "{A} \u304C\u53C2\u6226\u3057\u305F!", "{A} \u0432\u0441\u0442\u0443\u043F\u0430\u0435\u0442 \u0432 \u0431\u043E\u0439!", "\u0627\u0646\u0636\u0645 {A} \u0625\u0644\u0649 \u0627\u0644\u0645\u0639\u0631\u0643\u0629!"],
-  defeat: ["{A} has fallen...", "{A} est tomb\xE9...", "{A} ha ca\xEDdo...", "{A} ist gefallen...", "{A} \u304C\u58CA\u6EC5\u3057\u305F...", "{A} \u043F\u0430\u043B...", "\u0633\u0642\u0637 {A}..."],
-  kill: ["{A} struck down {B}'s king!", "{A} a abattu le roi de {B} !", "\xA1{A} derrib\xF3 al rey de {B}!", "{A} hat {B}s K\xF6nig gest\xFCrzt!", "{A} \u304C {B} \u306E\u738B\u3092\u8A0E\u3063\u305F!", "{A} \u0441\u0440\u0430\u0437\u0438\u043B \u043A\u043E\u0440\u043E\u043B\u044F {B}!", "{A} \u0623\u0633\u0642\u0637 \u0645\u0644\u0643 {B}!"],
-  banter: ["Hold the line!", "Tenez la ligne !", "\xA1Mantened la l\xEDnea!", "Haltet die Stellung!", "\u6301\u3061\u3053\u305F\u3048\u308D!", "\u0414\u0435\u0440\u0436\u0438\u043C \u0441\u0442\u0440\u043E\u0439!", "\u062D\u0627\u0641\u0638\u0648\u0627 \u0639\u0644\u0649 \u0627\u0644\u062E\u0637!", "Victory will be ours.", "La victoire sera n\xF4tre.", "\xA1La victoria ser\xE1 nuestra!", "\u738B\u624B\u306E\u6C17\u914D\u2026", "\u0421\u043A\u043E\u0440\u043E \u0431\u0443\u0434\u0435\u0442 \u043D\u0430\u0448 \u0445\u043E\u0434.", "\u0627\u0644\u0646\u0635\u0631 \u0644\u0646\u0627 \u0642\u0631\u064A\u0628\u0627."]
-};
-function fillLine(tmpl, A, B) {
-  return tmpl.replace("{A}", A).replace("{B}", B || "");
-}
-function randLine(kind, A, B) {
-  const arr = CHAT_LINES[kind];
-  return fillLine(arr[Math.floor(Math.random() * arr.length)], A, B);
-}
-function pushChat(W, name, color, text) {
-  W.chat.push({ id: W.chat.length + "-" + Date.now() + "-" + Math.random(), name, color, text });
-  if (W.chat.length > 60) W.chat.shift();
-}
 const BAD_WORDS = [
   "fuck",
   "shit",
@@ -680,5 +663,5 @@ function updateWorld(W) {
 module.exports = {
   MAP_W, MAP_H, MOVE_COOLDOWN, MARCH_INTERVAL, CAP, NAME_MAX_LEN, K,
   now, spawnNewArmy, applyGuestAction, updateWorld, handleDefeat, aliveCount,
-  buildKingIndex, refreshZone, filterProfanity, pushChat, randLine,
+  buildKingIndex, refreshZone, filterProfanity,
 };

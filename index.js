@@ -28,7 +28,7 @@ const WebSocket = require("ws");
 const {
   MAP_W, MAP_H, NAME_MAX_LEN, now,
   spawnNewArmy, applyGuestAction, updateWorld, handleDefeat, aliveCount,
-  filterProfanity, pushChat, randLine,
+  filterProfanity,
 } = require("./game.js");
 
 const TICK_MS = 60;              // server simulation tick, per room
@@ -69,7 +69,7 @@ function createRoom(preferredCode) {
   const room = {
     code,
     private: isPrivate, // 自分で合言葉を決めて作った部屋は一覧に出さない
-    world: { mode: "openworld", cells: new Map(), armies: [], marchAnchor: now(), lastMarchTick: 0, chat: [] },
+    world: { mode: "openworld", cells: new Map(), armies: [], marchAnchor: now(), lastMarchTick: 0 },
     clients: new Map(),
     lastBroadcastAt: 0,
     emptySince: now(),
@@ -114,7 +114,6 @@ function serialize(room) {
       kills: a.kills, target: a.target, marchRel: a.marchRel || null, flankBias: a.flankBias, name: a.name,
       cd: Math.max(0, 5000 - (now() - a.lastAction)),
     })),
-    chat: W.chat.slice(-40),
     marchAnchor: W.marchAnchor, lastMarchTick: W.lastMarchTick,
     cap: ROOM_CAP, count: aliveCount(W), code: room.code,
     ts: now(),
