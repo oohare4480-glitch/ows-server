@@ -1,6 +1,6 @@
 // このファイルは自動生成です。直接編集せず、クライアント(ows_app.html)側を直してから
 // build_server_game.js で作り直してください。ネット対戦とAI対戦のルールを完全に一致させるためです。
-// 生成元: ows_app.html  生成日時: 2026-09-22T23:52:14.311Z
+// 生成元: ows_app.html  生成日時: 2026-09-23T00:12:26.038Z
 
 const MAP_W = 480, MAP_H = 480;
 const ZONE_R_BASE = 4;
@@ -1227,6 +1227,15 @@ function newWorld(mode, playerName, netOpts) {
     });
     lootTarget = Math.floor(MAP_W * MAP_H * 0.017);
     scatterLoot(cells, armies, neutralId, lootTarget);
+    if (mode === "play") {
+      // \u30D7\u30EC\u30A4\u30E4\u30FC\u306E\u8ECD\u3060\u3051\u306F\u683C\u5B50\u72B6\u306E\u521D\u671F\u914D\u7F6E\u306E\u307E\u307E\u3060\u3068\u3001\u5927\u8ECD\u306E\u53EF\u52D5\u57DF\u306E\u4E2D\u3084
+      // \u6575\u99D2\u306E\u771F\u96A3\u306B\u7F6E\u304B\u308C\u308B\u3053\u3068\u304C\u3042\u308A\u3001\u958B\u59CB\u76F4\u5F8C\u306E\u4E00\u6589\u9032\u8ECD\u3067\u8E0F\u307F\u6F70\u3055\u308C\u3066\u3044\u305F\u3002
+      // \u9014\u4E2D\u53C2\u6226\u3068\u540C\u3058\u57FA\u6E96(\u4ED6\u8ECD\u306E\u53EF\u52D5\u57DF\u304B\u3089\u96E2\u308C\u305F\u5834\u6240)\u3078\u79FB\u3057\u76F4\u3059\u3002
+      const W0 = { cells, armies };
+      const pf = armies[0].facing;
+      const spot = findSpawnSpot(W0, pf);
+      if (spot) relocateArmy(W0, armies[0], spot, pf);
+    }
   }
   return {
     mode,
@@ -1257,7 +1266,10 @@ function newWorld(mode, playerName, netOpts) {
 const SERIF = '"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif';
 const ENFONT = '"Playfair Display","Georgia",serif';
 const KOMAFONT = '"Yuji Syuku","Shippori Mincho B1","Hiragino Mincho ProN",serif';
-const WOOD_GRAIN = "linear-gradient(rgba(20,10,4,0.12), rgba(20,10,4,0.12)), url('/wood-grain.jpeg')";
+// \u753B\u50CF\u304C\u5C4A\u304F\u307E\u3067\u306E\u9593\u3082\u6728\u76EE\u3068\u307B\u307C\u540C\u3058\u6FC3\u3044\u8336\u8272\u306B\u898B\u3048\u308B\u3088\u3046\u3001\u6700\u5F8C\u306E url \u306B\u4E0B\u5730\u8272\u3092\u6DFB\u3048\u308B\u3002
+// (\u4EE5\u524D\u306F\u660E\u308B\u3044\u8336\u8272\u304B\u3089\u6FC3\u3044\u8336\u8272\u3078\u5207\u308A\u66FF\u308F\u308B\u77AC\u9593\u304C\u898B\u3048\u3066\u3044\u305F)
+const WOOD_BASE = "#1a0906";
+const WOOD_GRAIN = `linear-gradient(rgba(20,10,4,0.12), rgba(20,10,4,0.12)), url('/wood-grain.jpeg') ${WOOD_BASE}`;
 const C = {
   field: "#10140F",
   panel: WOOD_GRAIN,
