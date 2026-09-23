@@ -3,6 +3,11 @@
 // its own armies, its own march clock), simulated and broadcast completely
 // independently of every other room. No AI — every army is human-controlled.
 //
+// ゲームのルール(進軍・可動域・倍速・配置駒の減衰など)は game.js にあり、
+// game.js はクライアント(ows_app.html)から自動生成している。ルールを変えるときは
+// クライアント側を直してから build_server_game.js で game.js を作り直すこと。
+// 手で game.js を編集すると、AI対戦とネット対戦の挙動がずれる。
+//
 // Room lifecycle:
 //   - A client can join a SPECIFIC room by code (private games with friends),
 //     or ask for "quick match" (code omitted), in which case the server picks
@@ -27,7 +32,7 @@ const http = require("http");
 const WebSocket = require("ws");
 const {
   MAP_W, MAP_H, NAME_MAX_LEN, now,
-  spawnNewArmy, applyGuestAction, updateWorld, handleDefeat, aliveCount,
+  newServerWorld, spawnNewArmy, applyGuestAction, updateWorld, handleDefeat, aliveCount,
   filterProfanity,
 } = require("./game.js");
 
@@ -69,7 +74,7 @@ function createRoom(preferredCode) {
   const room = {
     code,
     private: isPrivate, // 自分で合言葉を決めて作った部屋は一覧に出さない
-    world: { mode: "openworld", cells: new Map(), armies: [], marchAnchor: now(), lastMarchTick: 0 },
+    world: newServerWorld(),
     clients: new Map(),
     lastBroadcastAt: 0,
     emptySince: now(),
@@ -112,9 +117,10 @@ function serialize(room) {
     armies: W.armies.map(a => ({
       id: a.id, facing: a.facing, alive: a.alive, hand: a.hand, center: a.center,
       kills: a.kills, target: a.target, marchRel: a.marchRel || null, flankBias: a.flankBias, name: a.name,
+      speedMult: a.speedMult || 1, // 進軍の倍率(クライアントの表示・ボタンの状態に使う)
       cd: Math.max(0, 5000 - (now() - a.lastAction)),
     })),
-    marchAnchor: W.marchAnchor, lastMarchTick: W.lastMarchTick,
+    marchAnchor: W.marchAnchor, lastMarchTick: W.lastUTick || 0,
     cap: ROOM_CAP, count: aliveCount(W), code: room.code,
     ts: now(),
   });
@@ -192,6 +198,7 @@ wss.on("connection", (ws) => {
       const a = spawnNewArmy(room.world);
       if (!a) { ws.send(JSON.stringify({ type: "full" })); return; }
       a.name = nm;
+      a.human = true; // 人が操作する軍。AIの思考や倍速の自動判断の対象にしない
       info.room = room;
       info.armyId = a.id;
       info.name = nm;
@@ -213,13 +220,14 @@ wss.on("connection", (ws) => {
       const a = spawnNewArmy(room.world);
       if (!a) return;
       a.name = info.name;
+      a.human = true;
       info.armyId = a.id;
       ws.send(JSON.stringify({ type: "joined", armyId: a.id, code: room.code }));
       broadcastSoon(room);
       return;
     }
 
-    if (["move", "drop", "rotate", "target", "targetRel", "stopTarget"].includes(msg.type)) {
+    if (["move", "drop", "rotate", "target", "targetRel", "stopTarget", "speed"].includes(msg.type)) {
       applyGuestAction(room.world, army, msg);
       broadcastSoon(room);
     }
@@ -243,9 +251,10 @@ setInterval(() => {
   for (const room of rooms.values()) {
     if (!room.clients.size) continue;
     try {
-      const before = room.world.lastMarchTick;
+      const before = room.world.lastUTick || 0;
       updateWorld(room.world);
-      if (room.world.lastMarchTick !== before) broadcastSoon(room);
+      // 進軍(倍速ぶんの一歩も含む)が起きたフレームは、すぐ全員に配る
+      if ((room.world.lastUTick || 0) !== before) broadcastSoon(room);
     } catch (e) { console.error(`updateWorld error in room ${room.code}`, e); }
 
     for (const [ws, c] of room.clients) {
